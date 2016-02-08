@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-# Copyright (c) 2013, 2014 Adam.Dybbroe
+# Copyright (c) 2013, 2014, 2016 Adam.Dybbroe
 
 # Author(s):
 
@@ -36,20 +36,26 @@ LOG = logging.getLogger(__name__)
 
 
 class InfoObject(object):
+
     """Simple data and info container.
     """
+
     def __init__(self):
         self.info = {}
         self.data = None
 
+
 class NwcSafPpsData(object):
+
     """The NWCSAF PPS Data class providing the readers"""
+
     def __init__(self, filename=None):
         self.info = {}
         self._how = {}
         self._what = {}
         self.lon = None
         self.lat = None
+        self.area = None
 
         self._md = {}
         self._projectables = []
@@ -80,16 +86,17 @@ class NwcSafPpsData(object):
         # Which one to use?:
         self._how["time_slot"] = (timedelta(seconds=long(h5f['how'].attrs['startepochs']))
                                   + datetime(1970, 1, 1, 0, 0))
-        self._what["time_slot"] = datetime.strptime(h5f['what'].attrs['date'] + 
-                                                    h5f['what'].attrs['time'][0:6],
+        self._what["time_slot"] = datetime.strptime(h5f['what'].attrs['date'] +
+                                                    h5f['what'].attrs[
+                                                        'time'][0:6],
                                                     "%Y%m%d%H%M%S")
 
-         # Read the data and attributes
+        # Read the data and attributes
         #   This covers only one level of data. This could be made recursive.
         for key, dataset in h5f.iteritems():
             if "how" in dataset.name or "what" in dataset.name:
                 continue
-                
+
             if "image" in dataset.name:
                 setattr(self, key, InfoObject())
                 getattr(self, key).info = dict(dataset.attrs)
@@ -101,10 +108,9 @@ class NwcSafPpsData(object):
                 if 'how' in dataset:
                     for skey, value in dataset['how'].attrs.iteritems():
                         getattr(self, key).info[skey] = value
-                if 'what' in dataset:                    
+                if 'what' in dataset:
                     for skey, value in dataset['what'].attrs.iteritems():
                         getattr(self, key).info[skey] = value
-
 
             if "where" in dataset.name and load_lonlat:
                 setattr(self, 'lon', InfoObject())
@@ -133,9 +139,22 @@ class NwcSafPpsData(object):
         except ImportError:
             return
 
+        import pdb
+        pdb.set_trace()
         if hasattr(self, "lon") and hasattr(self, "lat"):
-            lons = self.lon.data * self.lon.info["gain"] + self.lon.info["gain"]
-            lats = self.lat.data * self.lat.info["gain"] + self.lat.info["gain"]
+            geomask = np.logical_or(np.equal(self.lon.data,  self.lon.info["nodata"]),
+                                    np.equal(self.lon.data,  self.lon.info["missingdata"]))
+            geomask = np.logical_or(geomask,
+                                    np.logical_or(np.equal(self.lat.data,
+                                                           self.lat.info["nodata"]),
+                                                  np.equal(self.lat.data,
+                                                           self.lat.info["missingdata"])))
+            lons = self.lon.data * \
+                self.lon.info["gain"] + self.lon.info["gain"]
+            lats = self.lat.data * \
+                self.lat.info["gain"] + self.lat.info["gain"]
+            lons = np.ma.masked_array(lons, mask=geomask)
+            lats = np.ma.masked_array(lats, mask=geomask)
             self.area = geometry.SwathDefinition(lons=lons, lats=lats)
         else:
             LOG.warning("No longitudes or latitudes for data")
@@ -185,7 +204,7 @@ class NwcSafPpsData(object):
             for skey, value in dataset.attrs.iteritems():
                 if isinstance(value, h5py.h5r.Reference):
                     self._refs[(key, skey)] = h5f[value].name.split("/")[1]
-                    
+
             if type(dataset.id) is h5py.h5g.GroupID:
                 LOG.warning("Format reader does not support groups")
                 continue
@@ -195,7 +214,7 @@ class NwcSafPpsData(object):
                 is_palette = (dataset.attrs.get("CLASS", None) == "PALETTE")
                 if(len(dataset.shape) > 1 and
                    not is_palette and
-                   key not in ["lon", "lat", 
+                   key not in ["lon", "lat",
                                "row_indices", "column_indices"]):
                     self._projectables.append(key)
                     if self.shape is None:
@@ -209,4 +228,3 @@ class NwcSafPpsData(object):
                 self._keys.append(key)
 
         h5f.close()
-
