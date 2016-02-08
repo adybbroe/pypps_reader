@@ -139,8 +139,6 @@ class NwcSafPpsData(object):
         except ImportError:
             return
 
-        import pdb
-        pdb.set_trace()
         if hasattr(self, "lon") and hasattr(self, "lat"):
             geomask = np.logical_or(np.equal(self.lon.data,  self.lon.info["nodata"]),
                                     np.equal(self.lon.data,  self.lon.info["missingdata"]))
