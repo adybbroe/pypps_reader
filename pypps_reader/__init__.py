@@ -62,6 +62,7 @@ class NwcSafPpsData(object):
         self._keys = []
         self._refs = {}
         self.shape = None
+
         if filename:
             with h5py.File(filename, "r") as h5f:
                 if 'how' in h5f.keys() or 'where' in h5f.keys() or 'what' in h5f.keys():
@@ -224,5 +225,29 @@ class NwcSafPpsData(object):
             except TypeError:
                 setattr(self, key, np.dtype(dataset))
                 self._keys.append(key)
+
+        # Setup geolocation
+        try:
+            from pyresample import geometry
+        except ImportError:
+            return
+
+        # Get the area definition
+        if hasattr(self, 'region'):
+            reg = h5f['region'][...]
+            area_extent = reg['area_extent'][0]
+            x_size = reg['xsize'][0]
+            y_size = reg['ysize'][0]
+            pcs_def = reg['pcs_def'][0].split(',')
+            proj_id = reg['pcs_id'][0]
+            area_id = reg['id'][0]
+            proj_dict = {}
+            for item in pcs_def:
+                key, val = item.split('=')
+                proj_dict[key] = val
+
+            self.area = geometry.AreaDefinition(area_id, 'undefined',
+                                                proj_id, proj_dict,
+                                                x_size, y_size, area_extent)
 
         h5f.close()
