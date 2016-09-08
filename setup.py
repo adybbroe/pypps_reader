@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-# Copyright (c) 2013, 2014 Adam Dybbroe
+# Copyright (c) 2013, 2014, 2016 Adam Dybbroe
 
 # Author(s):
 
@@ -34,7 +34,7 @@ import imp
 version = imp.load_source('pypps_reader.version', 'pypps_reader/version.py')
 
 setup(name='pypps_reader',
-      version="v0.1.1",
+      version="0.1.2",
       description='NWCSAF pps data reader',
       author='Adam Dybbroe',
       author_email='adam.dybbroe@smhi.se',
@@ -45,23 +45,23 @@ setup(name='pypps_reader',
                    "Operating System :: OS Independent",
                    "Programming Language :: Python",
                    "Topic :: Scientific/Engineering"],
-      url = "https://github.com/adybbroe/pypps_reader",
-      download_url = "https://github.com/adybbroe/pypps_reader/tarball/0.1.1 #egg=pypps_reader-v0.1.1",
+      url="https://github.com/adybbroe/pypps_reader",
+      download_url="https://github.com/adybbroe/pypps_reader/tarball/0.1.2 #egg=pypps_reader-0.1.2",
       long_description=long_description,
       license='GPLv3',
 
-      packages = ['pypps_reader'],
+      packages=['pypps_reader'],
 
       # Project should use reStructuredText, so ensure that the docutils get
       # installed or upgraded on the target machine
-      install_requires=['docutils>=0.3', 
+      install_requires=['docutils>=0.3',
                         'numpy', 'h5py'],
-      extras_require = {'geolocation layout for pyresample': ['pyresample'],
-                        },
-      scripts = [],      
+      extras_require={'geolocation layout for pyresample': ['pyresample'],
+                      },
+      scripts=[],
       data_files=[('etc', ['etc/pps_reader.cfg'])],
       test_suite="nose.collector",
       tests_require=[],
 
-      zip_safe = False
+      zip_safe=False
       )
