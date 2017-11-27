@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-# Copyright (c) 2013, 2014, 2016 Adam.Dybbroe
+# Copyright (c) 2013, 2014, 2016, 2017 Adam.Dybbroe
 
 # Author(s):
 
@@ -210,10 +210,11 @@ class NwcSafPpsData(object):
 
             try:
                 getattr(self, key).data = dataset[:]
-                is_palette = (dataset.attrs.get("CLASS", None) == "PALETTE")
+                is_palette = (dataset.attrs.get("CLASS", None) == "PALETTE" or
+                              'palette' in dataset.attrs.get("long_name", None))
                 if(len(dataset.shape) > 1 and
                    not is_palette and
-                   key not in ["lon", "lat",
+                   key not in ["region", "lon", "lat",
                                "row_indices", "column_indices"]):
                     self._projectables.append(key)
                     if self.shape is None:
@@ -228,26 +229,48 @@ class NwcSafPpsData(object):
 
         # Setup geolocation
         try:
-            from pyresample import geometry
-        except ImportError:
+            latitudes = h5f['lat'][...]
+            lat_fillvalue = h5f['lat'].attrs['_FillValue'][0]
+            longitudes = h5f['lon'][...]
+            #lon_fillvalue = h5f['lon'].attrs['_FillValue'][0]
+        except KeyError:
+            # No geolocation
+            h5f.close()
             return
 
-        # Get the area definition
-        if hasattr(self, 'region'):
-            reg = h5f['region'][...]
-            area_extent = reg['area_extent'][0]
-            x_size = reg['xsize'][0]
-            y_size = reg['ysize'][0]
-            pcs_def = reg['pcs_def'][0].split(',')
-            proj_id = reg['pcs_id'][0]
-            area_id = reg['id'][0]
-            proj_dict = {}
-            for item in pcs_def:
-                key, val = item.split('=')
-                proj_dict[key] = val
+        try:
+            from pyresample import geometry
+        except ImportError:
+            h5f.close()
+            return
 
-            self.area = geometry.AreaDefinition(area_id, 'undefined',
-                                                proj_id, proj_dict,
-                                                x_size, y_size, area_extent)
+        if hasattr(self, "lon") and hasattr(self, "lat"):
+
+            geomask = (latitudes == lat_fillvalue)
+            lons = np.ma.masked_array(longitudes, mask=geomask)
+            lats = np.ma.masked_array(latitudes, mask=geomask)
+            self.area = geometry.SwathDefinition(lons=lons, lats=lats)
+        else:
+            LOG.info(
+                "No longitudes or latitudes for data. Try region definition...")
+
+            # Get the area definition
+            if hasattr(self, 'region'):
+                reg = h5f['region'][...]
+                area_extent = reg['area_extent'][0]
+                x_size = reg['xsize'][0]
+                y_size = reg['ysize'][0]
+                pcs_def = reg['pcs_def'][0].split(',')
+                proj_id = reg['pcs_id'][0]
+                area_id = reg['id'][0]
+                proj_dict = {}
+                if len(pcs_def) > 1:
+                    for item in pcs_def:
+                        key, val = item.split('=')
+                        proj_dict[key] = val
+
+                self.area = geometry.AreaDefinition(area_id, 'undefined',
+                                                    proj_id, proj_dict,
+                                                    x_size, y_size, area_extent)
 
         h5f.close()
