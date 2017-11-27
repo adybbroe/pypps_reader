@@ -211,12 +211,13 @@ class NwcSafPpsData(object):
             try:
                 getattr(self, key).data = dataset[:]
                 is_palette = (dataset.attrs.get("CLASS", None) == "PALETTE" or
-                              'palette' in dataset.attrs.get("long_name", None))
+                              'alette' in dataset.attrs.get("long_name", None))
                 if(len(dataset.shape) > 1 and
                    not is_palette and
                    key not in ["region", "lon", "lat",
                                "row_indices", "column_indices"]):
                     self._projectables.append(key)
+
                     if self.shape is None:
                         self.shape = dataset.shape
                     elif self.shape != dataset.shape:
